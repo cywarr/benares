@@ -2,28 +2,32 @@ import * as THREE from 'https://threejs.org/build/three.module.js';
 import { OrbitControls } from 'https://threejs.org/examples/jsm/controls/OrbitControls.js';
 
 var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+var camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
 camera.position.set(1, 2, 3).setLength(4);
 var renderer = new THREE.WebGLRenderer({
     antialias: true
 });
 renderer.setSize(innerWidth, innerHeight);
-renderer.setClearColor(0x884400);
+var backColor = 0xff8844;
+renderer.setClearColor(backColor);
 document.body.appendChild(renderer.domElement);
 
 var controls = new OrbitControls(camera, renderer.domElement);
 
-var path = "https://threejs.org/examples/textures/cube/SwedishRoyalCastle/";
+var path = "https://threejs.org/examples/textures/cube/MilkyWay/";
+var prefix = `dark-s_`;
 var format = '.jpg';
 var urls = [
-    path + 'px' + format, path + 'nx' + format,
-    path + 'py' + format, path + 'ny' + format,
-    path + 'pz' + format, path + 'nz' + format
+    path + prefix + 'px' + format, path + prefix + 'nx' + format,
+    path + prefix + 'py' + format, path + prefix + 'ny' + format,
+    path + prefix + 'pz' + format, path + prefix + 'nz' + format
 ];
 
 var cubeTextureLoader = new THREE.CubeTextureLoader();
 
 var reflectionCube = cubeTextureLoader.load(urls);
+
+//scene.background = reflectionCube;
 
 /*var light = new THREE.DirectionalLight(0xffffff, 0.125);
 light.position.set(0, 1, 0);
@@ -38,13 +42,14 @@ var angleStep = Math.PI / spheresAmount;
 var spheres = [];
 var corpuscules = [];
 
-var sphereColor = 0x224488;
+var sphereColor = 0x4488ff;
 var sGeom = new THREE.SphereBufferGeometry(0.05, 16, 16);
 var sMat = new THREE.MeshStandardMaterial({
     color: sphereColor,
     envMap: reflectionCube,
-    roughness: 0.99,
-    metalness: 0.99
+    envMapIntensity: 0.5,
+    roughness: 0.,
+    metalness: 0.75
 });
 for (let i = 0; i < spheresAmount; i++) {
     let sphere = new THREE.Mesh(sGeom, sMat);
@@ -104,7 +109,7 @@ mainSphereGeom.setAttribute("vertBefore", new THREE.Float32BufferAttribute(vertB
 var mainSphereMat = new THREE.MeshStandardMaterial({
     color: sphereColor,
     envMap: reflectionCube,
-    envMapIntensity: 0.125,
+    envMapIntensity: 0.25,
     metalness: 0.75,
     roughness: 0,
     wireframe: false
