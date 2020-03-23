@@ -36,7 +36,7 @@ scene.add(new THREE.AmbientLight(0xffffff, 0.25));
 
 //scene.add(new THREE.GridHelper(10, 10));
 
-var spheresAmount = 10;
+var spheresAmount = 12;
 var angleStep = Math.PI / spheresAmount;
 
 var spheres = [];
@@ -47,13 +47,14 @@ var sGeom = new THREE.SphereBufferGeometry(0.05, 16, 16);
 var sMat = new THREE.MeshStandardMaterial({
     color: sphereColor
 });
+var icosahedronGeom = new THREE.IcosahedronGeometry(1, 0);
 for (let i = 0; i < spheresAmount; i++) {
     let sphere = new THREE.Mesh(sGeom, sMat);
-    sphere.userData.dirVector = new THREE.Vector3().setFromSphericalCoords(
-        1,
+    sphere.userData.dirVector = new THREE.Vector3().copy(icosahedronGeom.vertices[i]);//.setFromSphericalCoords(
+        //1,
         //(Math.random() - 0.5) < 0 ? (Math.random() * Math.PI * 0.25) : Math.PI - (Math.random() * Math.PI * 0.25), 
-        Math.random() * Math.PI, 
-        Math.random() * Math.PI * 2);
+        //Math.random() * Math.PI, 
+        //Math.random() * Math.PI * 2);
     sphere.userData.dirTheta = i * angleStep;
     spheres.push(sphere);
     scene.add(sphere);
@@ -77,10 +78,10 @@ for (let i = 0; i < sPos.count; i++){
 mainSphereGeom = mainSphereGeom.toNonIndexed();
 
 
-var mainSphereMat = new THREE.MeshStandardMaterial({
-    //color: 0x8888ff,
+var mainSphereMat = new THREE.MeshLambertMaterial({
+    color: 0x8888ff,
     //envMap: reflectionCube,
-    map: new THREE.TextureLoader().load("https://threejs.org/examples/textures/uv_grid_opengl.jpg")
+    //map: new THREE.TextureLoader().load("https://threejs.org/examples/textures/uv_grid_opengl.jpg")
 });
 //mainSphereMat.defines = {"USE_ENVMAP":""};
 var uniforms = {
