@@ -14,13 +14,13 @@ document.body.appendChild(renderer.domElement);
 
 var controls = new OrbitControls(camera, renderer.domElement);
 
-var path = "https://threejs.org/examples/textures/cube/MilkyWay/";
-var prefix = `dark-s_`;
+var path = "./textures/cube/";
+var prefix = ``;//`dark-s_`;
 var format = '.jpg';
 var urls = [
-    path + prefix + 'px' + format, path + prefix + 'nx' + format,
-    path + prefix + 'py' + format, path + prefix + 'ny' + format,
-    path + prefix + 'pz' + format, path + prefix + 'nz' + format
+    path + prefix + 'posx' + format, path + prefix + 'negx' + format,
+    path + prefix + 'posy' + format, path + prefix + 'negy' + format,
+    path + prefix + 'posz' + format, path + prefix + 'negz' + format
 ];
 
 var cubeTextureLoader = new THREE.CubeTextureLoader();
@@ -29,10 +29,10 @@ var reflectionCube = cubeTextureLoader.load(urls);
 
 //scene.background = reflectionCube;
 
-var light = new THREE.DirectionalLight(0xffffff, 0.75);
-light.position.set(0, 1, 0);
+var light = new THREE.DirectionalLight(0xffffff, 0.125);
+light.position.set(0, -1, 0);
 scene.add(light);
-scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+scene.add(new THREE.AmbientLight(0xffffff, 0.875));
 
 //scene.add(new THREE.GridHelper(10, 10));
 
@@ -42,11 +42,12 @@ var angleStep = Math.PI / spheresAmount;
 var spheres = [];
 var corpuscules = [];
 
-var sphereColor = 0x4488ff;
+var sphereColor = 0x222244;
 var sGeom = new THREE.SphereBufferGeometry(0.05, 16, 16);
 var sMat = new THREE.MeshStandardMaterial({
     color: sphereColor
 });
+
 var icosahedronGeom = new THREE.IcosahedronGeometry(1, 0);
 for (let i = 0; i < spheresAmount; i++) {
     let sphere = new THREE.Mesh(sGeom, sMat);
@@ -55,7 +56,7 @@ for (let i = 0; i < spheresAmount; i++) {
         //(Math.random() - 0.5) < 0 ? (Math.random() * Math.PI * 0.25) : Math.PI - (Math.random() * Math.PI * 0.25), 
         //Math.random() * Math.PI, 
         //Math.random() * Math.PI * 2);
-    sphere.userData.dirTheta = i * angleStep;
+    sphere.userData.dirTheta = Math.random() * Math.PI; //i * angleStep;
     spheres.push(sphere);
     scene.add(sphere);
     corpuscules.push(sphere.position);
@@ -79,11 +80,15 @@ mainSphereGeom = mainSphereGeom.toNonIndexed();
 
 
 var mainSphereMat = new THREE.MeshLambertMaterial({
-    color: 0x8888ff,
-    //envMap: reflectionCube,
-    //map: new THREE.TextureLoader().load("https://threejs.org/examples/textures/uv_grid_opengl.jpg")
+    color: 0x222244,
+    envMap: reflectionCube,
+    reflectivity: 0.25
+    //envMapIntensity: 10,
+    //map: new THREE.TextureLoader().load("https://threejs.org/examples/textures/uv_grid_opengl.jpg"),
+    //metalness: 1,
+    //roughness: 0.25
 });
-//mainSphereMat.defines = {"USE_ENVMAP":""};
+mainSphereMat.defines = {"USE_ENVMAP":""};
 var uniforms = {
     corpuscules: {
         value: corpuscules
@@ -108,7 +113,7 @@ mainSphereMat.onBeforeCompile = shader => {
       float dist = length(diff);
       shortestDist = min(shortestDist, dist);
       
-      float force = .00625 / (dist * dist);
+      float force = .0125 / (dist * dist);
       vec3 forceVec = dir * force;
       
       accumulate += forceVec;
