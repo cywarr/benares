@@ -1,18 +1,17 @@
-import * as THREE from 'https://threejs.org/build/three.module.js';
-import { OrbitControls } from 'https://threejs.org/examples/jsm/controls/OrbitControls.js';
+import * as THREE from 'https://unpkg.com/three@0.115.0/build/three.module.js';
+import { OrbitControls } from 'https://unpkg.com/three@0.115.0/examples/jsm/controls/OrbitControls.js';
 
-var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
-camera.position.set(3, 3, 3).setLength(3.75);
+console.log("Three.js r" + THREE.REVISION);
+
 var renderer = new THREE.WebGLRenderer({
     antialias: true
 });
 renderer.setSize(innerWidth, innerHeight);
-var backColor = 0xff8844;
-renderer.setClearColor(backColor);
+renderer.autoClear = false;
 document.body.appendChild(renderer.domElement);
 
-var controls = new OrbitControls(camera, renderer.domElement);
+//#region Resources
+var manager = new THREE.LoadingManager();
 
 var path = "./textures/cube/";
 var prefix = ``;//`dark-s_`;
@@ -23,22 +22,97 @@ var urls = [
     path + prefix + 'posz' + format, path + prefix + 'negz' + format
 ];
 
-var cubeTextureLoader = new THREE.CubeTextureLoader();
+var cubeTextureLoader = new THREE.CubeTextureLoader(manager);
 
 var reflectionCube = cubeTextureLoader.load(urls);
 
-var textureLoader = new THREE.TextureLoader();
+var textureLoader = new THREE.TextureLoader(manager);
 var texAum = textureLoader.load("./textures/aum.png");
 var texBenares = textureLoader.load("./textures/benares.png");
+//#endregion
 
-//scene.background = reflectionCube;
+//#region Back
+var texture
+var cameraBack = new THREE.Camera();
+var sceneBack = new THREE.Scene();
+var backPlaneGeom = new THREE.PlaneBufferGeometry(2, 2);
+
+var backUniforms = {
+    texBenares: {
+        value: texBenares
+    },
+    screenRatio: {
+        value: innerWidth / innerHeight
+    },
+    time: {
+        value: 0
+    }
+}
+var backPlaneMat = new THREE.ShaderMaterial({
+    uniforms: backUniforms,
+    vertexShader:`
+    varying vec2 vUv;
+    void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+    }
+    `,
+    fragmentShader:`
+    uniform sampler2D texBenares;
+    uniform float screenRatio;
+    uniform float time;
+
+    varying vec2 vUv;
+
+    void main() {
+        vec2 uv = vUv;
+        vec3 col = vec3(0);
+        
+        float ratio = screenRatio * 0.5;
+        vec2 bUv = vUv;
+        bUv.x *= ratio;
+        bUv.x += 0.5 * (1. - ratio);
+        bUv.y *=2.;
+        bUv.y -=1.;
+        float s = sign(bUv.y);
+        bUv.y = abs(bUv.y);
+        vec2 offset = vec2(0);
+        if (s < 0.) {
+            offset.x = cos( time  * 2. + uv.y * 60. ) * 0.013 + sin( time  * 2.3 + uv.x * 60. ) * 0.003;
+            offset.y = sin( time  * -3. + uv.x * 30. ) * 0.023 + cos( time  * -2.7 + uv.y * 30. ) * 0.003;
+        }
+
+        vec4 benares = texture2D(texBenares, bUv + offset * (0.5 + bUv.y));
+        float bStencil = benares.r;
+
+        col = vec3(1, 0.5, 0.25);
+        col = mix(col, vec3(1, 0.75, 0.5), bStencil);
+
+        gl_FragColor = vec4(col, 1.0);
+    }
+    `
+});
+
+
+var backPlane = new THREE.Mesh(backPlaneGeom, backPlaneMat);
+sceneBack.add(backPlane);
+//#endregion
+
+//#region Front
+var sceneFront = new THREE.Scene();
+var cameraFront = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+cameraFront.position.set(3, 3, 3).setLength(3.75);
+
+var controls = new OrbitControls(cameraFront, renderer.domElement);
+
+//sceneFront.background = reflectionCube;
 
 var light = new THREE.DirectionalLight(0xffffff, 0.125);
 light.position.set(0, -1, 0);
-scene.add(light);
-scene.add(new THREE.AmbientLight(0xffffff, 0.875));
+sceneFront.add(light);
+sceneFront.add(new THREE.AmbientLight(0xffffff, 0.875));
 
-//scene.add(new THREE.GridHelper(10, 10));
+//sceneFront.add(new THREE.GridHelper(10, 10));
 
 var spheresAmount = 12;
 var angleStep = Math.PI / spheresAmount;
@@ -60,7 +134,7 @@ for (let i = 0; i < spheresAmount; i++) {
     sphere.userData.dirVector = new THREE.Vector3().copy(icosahedronGeom.vertices[i]);
     sphere.userData.dirTheta = Math.random() * Math.PI;
     spheres.push(sphere);
-    scene.add(sphere);
+    sceneFront.add(sphere);
     corpuscules.push(sphere.position);
 }
 
@@ -163,10 +237,10 @@ mainSphereMat.onBeforeCompile = shader => {
         
         vec2 uv = vUv;
         uv -= 0.5;
-        uv *= 20.25;
+        uv *= 108.;
 
         float a = atan(uv.x,uv.y)+PI;
-        float r = PI2/floor(1. + floor(mod(time + vSides, 6.)));
+        float r = PI2/floor(3. + floor(mod(time + vSides, 6.)));
         float d = cos(floor(.5+a/r)*r-a)*length(uv);
 
         float waveVal = sin((d - time) * PI2) * 0.5 + 0.5;
@@ -180,28 +254,39 @@ mainSphereMat.onBeforeCompile = shader => {
     //console.log(shader.fragmentShader);
 }
 var mainSphere = new THREE.Mesh(mainSphereGeom, mainSphereMat);
-scene.add(mainSphere);
+sceneFront.add(mainSphere);
+//#endregion
 
 window.addEventListener('resize', onWindowResize, false);
 
 var clock = new THREE.Clock();
 
 renderer.setAnimationLoop(() => {
+
     let t = clock.getElapsedTime() * 0.75;
+
     spheres.forEach((s, idx) => {
 
         s.position.copy(s.userData.dirVector).multiplyScalar(Math.sin(s.userData.dirTheta + t) * 2);
 
     });
     uniforms.time.value = t;
-    renderer.render(scene, camera)
+    backUniforms.time.value = t;
+
+    renderer.clear();
+    renderer.render(sceneBack, cameraBack);
+    renderer.clearDepth();
+    renderer.render(sceneFront, cameraFront)
+
 });
 
 function onWindowResize() {
 
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+    cameraFront.aspect = innerWidth / innerHeight;
+    cameraFront.updateProjectionMatrix();
 
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    backUniforms.screenRatio.value = innerWidth / innerHeight; 
+
+    renderer.setSize(innerWidth, innerHeight);
 
 }
