@@ -78,15 +78,17 @@ var backPlaneMat = new THREE.ShaderMaterial({
         bUv.y = abs(bUv.y);
         vec2 offset = vec2(0);
         if (s < 0.) {
-            offset.x = cos( time  * 2. + uv.y * 60. ) * 0.013 + sin( time  * 2.3 + uv.x * 60. ) * 0.003;
-            offset.y = sin( time  * -3. + uv.x * 30. ) * 0.023 + cos( time  * -2.7 + uv.y * 30. ) * 0.003;
+            float m2 = (pow(bUv.y, 0.5));
+            offset.x = cos( time  * -2. + bUv.y * 30. * m2) * 0.013 + sin( time  * -2.3 + bUv.x * 45. * m2) * 0.01;
+            offset.y = sin( time  * -3. + bUv.x * 15. * m2) * 0.01 + cos( time  * -2.7 + bUv.y * 7. * m2) * 0.025;
         }
 
         vec4 benares = texture2D(texBenares, bUv + offset * (0.5 + bUv.y));
         float bStencil = benares.r;
-
-        col = vec3(1, 0.5, 0.25);
-        col = mix(col, vec3(1, 0.75, 0.5), bStencil);
+        
+        float m = s < 0. ? 0.75 : 1.;
+        col = vec3(1, 0.5, 0.25) * m;
+        col = mix(col, vec3(1, 0.75, 0.5) * m, bStencil);
 
         gl_FragColor = vec4(col, 1.0);
     }
@@ -120,7 +122,7 @@ var angleStep = Math.PI / spheresAmount;
 var spheres = [];
 var corpuscules = [];
 
-var sphereColor = 0x884444;
+var sphereColor = 0x444444; //0x884444;
 var sGeom = new THREE.SphereBufferGeometry(0.075, 16, 16);
 var sMat = new THREE.MeshLambertMaterial({
     color: sphereColor,
@@ -228,6 +230,16 @@ mainSphereMat.onBeforeCompile = shader => {
         uniform sampler2D texAum;
         uniform float time;
         varying float vSides;
+
+        //  https://www.shadertoy.com/view/MsS3Wc
+        vec3 hsb2rgb( in vec3 c ){
+            vec3 rgb = clamp(abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),
+                                    6.0)-3.0)-1.0,
+                            0.0,
+                            1.0 );
+            rgb = rgb*rgb*(3.0-2.0*rgb);
+            return c.z * mix( vec3(1.0), rgb, c.y);
+        }
     ` + shader.fragmentShader;
     shader.fragmentShader = shader.fragmentShader.replace(
         `#include <dithering_fragment>`,
@@ -242,11 +254,13 @@ mainSphereMat.onBeforeCompile = shader => {
         float a = atan(uv.x,uv.y)+PI;
         float r = PI2/floor(3. + floor(mod(time + vSides, 6.)));
         float d = cos(floor(.5+a/r)*r-a)*length(uv);
-
-        float waveVal = sin((d - time) * PI2) * 0.5 + 0.5;
+        
+        float s = step(d, 20.) - step(d, 15.);
+        float waveVal = s > 0.5 ? 1. : sin((d - time) * PI2) * 0.5 + 0.5;
 
         vec3 col = vec3(0);
         col = vec3(0, 0.5, 1) * 0.5;
+        col = hsb2rgb(vec3((1./6.) * vSides * (PI / 3.) + time, .125, .375));
         //col = mix(col, vec3(0.5, 0.25, 0), waveVal);
         gl_FragColor.rgb = mix(gl_FragColor.rgb, col, texVal * waveVal);
         `
