@@ -86,7 +86,7 @@ var backPlaneMat = new THREE.ShaderMaterial({
         vec4 benares = texture2D(texBenares, bUv + offset * (0.5 + bUv.y));
         float bStencil = benares.r;
         
-        float m = s < 0. ? 0.75 : 1.;
+        float m = s < 0. ? 0.95 : 1.;
         col = vec3(1, 0.5, 0.25) * m;
         col = mix(col, vec3(1, 0.75, 0.5) * m, bStencil);
 
@@ -122,12 +122,12 @@ var angleStep = Math.PI / spheresAmount;
 var spheres = [];
 var corpuscules = [];
 
-var sphereColor = 0x444444; //0x884444;
+var sphereColor = 0xdd4444; //0x884444;
 var sGeom = new THREE.SphereBufferGeometry(0.075, 16, 16);
 var sMat = new THREE.MeshLambertMaterial({
     color: sphereColor,
     envMap: reflectionCube,
-    reflectivity: 0.125
+    reflectivity: 0.0625
 });
 
 var icosahedronGeom = new THREE.IcosahedronGeometry(1, 0);
@@ -161,11 +161,12 @@ mainSphereGeom.setAttribute("sides", new THREE.Float32BufferAttribute(sides, 1))
 
 
 var mainSphereMat = new THREE.MeshLambertMaterial({
-    color: 0x222244,
+    color: 0x333366,
     envMap: reflectionCube,
-    reflectivity: 0.25
+    reflectivity: 0.125
 });
 mainSphereMat.defines = {"USE_UV":""};
+mainSphereMat.extensions = {derivatives: true};
 var uniforms = {
     corpuscules: {
         value: corpuscules
@@ -255,12 +256,13 @@ mainSphereMat.onBeforeCompile = shader => {
         float r = PI2/floor(3. + floor(mod(time + vSides, 6.)));
         float d = cos(floor(.5+a/r)*r-a)*length(uv);
         
-        float s = step(d, 20.) - step(d, 15.);
-        float waveVal = s > 0.5 ? 1. : sin((d - time) * PI2) * 0.5 + 0.5;
+        float e = length(fwidth(uv)) * 0.5;
+        /*float s = smoothstep(15. - e, 15., d ) - smoothstep(15., 15. + e, d);*/
+        float waveVal = /*s > 0.5 ? 1. : */ sin((d - time) * PI2) * 0.5 + 0.5;
 
         vec3 col = vec3(0);
         col = vec3(0, 0.5, 1) * 0.5;
-        col = hsb2rgb(vec3((1./6.) * vSides * (PI / 3.) + time, .125, .375));
+        col = hsb2rgb(vec3((1./6.) * vSides * (PI / 3.) + time, .125, .5));
         //col = mix(col, vec3(0.5, 0.25, 0), waveVal);
         gl_FragColor.rgb = mix(gl_FragColor.rgb, col, texVal * waveVal);
         `
