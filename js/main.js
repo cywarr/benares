@@ -106,6 +106,7 @@ var cameraFront = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1,
 cameraFront.position.set(3, 3, 3).setLength(3.75);
 
 var controls = new OrbitControls(cameraFront, renderer.domElement);
+controls.enableDamping = true;
 
 //sceneFront.background = reflectionCube;
 
@@ -288,6 +289,8 @@ renderer.setAnimationLoop(() => {
     });
     uniforms.time.value = t;
     backUniforms.time.value = t;
+
+    controls.update();
 
     renderer.clear();
     renderer.render(sceneBack, cameraBack);
