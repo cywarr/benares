@@ -12,6 +12,46 @@ document.body.appendChild(renderer.domElement);
 
 //#region Resources
 var manager = new THREE.LoadingManager();
+var startButton = document.getElementById('startButton');
+manager.onProgress = function (url, itemsLoaded, itemsTotal) {
+    startButton.innerText = Math.round(itemsLoaded / itemsTotal) * 100 + " %";
+};
+manager.onLoad = function () {
+    startButton.innerText = "Play";
+    startButton.addEventListener("click", startPlayback);
+}
+
+var dataTexture = null;
+var analyser;
+function startPlayback() {
+    var fftSize = 128;
+
+    var listener = new THREE.AudioListener();
+
+    var audio = new THREE.Audio(listener);
+
+    var mediaElement = new Audio('sound/holbaumannbenares.mp3');
+    mediaElement.loop = true;
+
+    audio.setMediaElementSource(mediaElement);
+
+    analyser = new THREE.AudioAnalyser(audio, fftSize);
+
+    dataTexture = new THREE.DataTexture(analyser.data, fftSize / 2, 1, THREE.LuminanceFormat);
+
+    backUniforms.soundData.value = dataTexture;
+
+    renderer.render(sceneBack, cameraBack);
+    renderer.render(sceneFront, cameraFront);
+    renderer.clear();
+
+    mediaElement.play();
+
+    renderer.setAnimationLoop(AnimationLoop);
+
+    var overlay = document.getElementById('overlay');
+    overlay.remove();
+}
 
 var path = "./textures/cube/";
 var prefix = ``;//`dark-s_`;
@@ -32,7 +72,6 @@ var texBenares = textureLoader.load("./textures/benares.png");
 //#endregion
 
 //#region Back
-var texture
 var cameraBack = new THREE.Camera();
 var sceneBack = new THREE.Scene();
 var backPlaneGeom = new THREE.PlaneBufferGeometry(2, 2);
@@ -46,6 +85,9 @@ var backUniforms = {
     },
     time: {
         value: 0
+    },
+    soundData: {
+        value: dataTexture
     }
 }
 var backPlaneMat = new THREE.ShaderMaterial({
@@ -61,6 +103,7 @@ var backPlaneMat = new THREE.ShaderMaterial({
     uniform sampler2D texBenares;
     uniform float screenRatio;
     uniform float time;
+    uniform sampler2D soundData;
 
     varying vec2 vUv;
 
@@ -74,6 +117,7 @@ var backPlaneMat = new THREE.ShaderMaterial({
         bUv.x += 0.5 * (1. - ratio);
         bUv.y *=2.;
         bUv.y -=1.;
+
         float s = sign(bUv.y);
         bUv.y = abs(bUv.y);
         vec2 offset = vec2(0);
@@ -83,11 +127,38 @@ var backPlaneMat = new THREE.ShaderMaterial({
             offset.y = sin( time  * -3. + bUv.x * 15. * m2) * 0.01 + cos( time  * -2.7 + bUv.y * 7. * m2) * 0.025;
         }
 
+        // sound spectrum https://www.shadertoy.com/view/Mlj3WV
+                        
+            vec2 sUv = uv - 0.5;
+            sUv *= vec2(2., 3.);
+            sUv = abs(sUv);
+
+            // quantize coordinates
+            const float bands = 128.0;
+            const float segs = 80.0;
+            vec2 p = vec2(0);
+            p.x = floor(sUv.x*bands)/bands;
+            p.y = floor(sUv.y*segs)/segs;
+
+            // read frequency data from first row of texture
+            float fft  = texture2D( soundData, vec2(p.x,0.0) ).x;
+
+            float mask = (p.y < fft) ? 1.0 : 0.1;
+            
+            
+
+            // led shape
+            vec2 d = fract((sUv - p) * vec2(bands, segs)) - 0.5;
+            float led = smoothstep(0.45, 0.25, abs(d.x)) *
+                        smoothstep(0.45, 0.25, abs(d.y));
+        //
+
         vec4 benares = texture2D(texBenares, bUv + offset * (0.5 + bUv.y));
         float bStencil = benares.r;
         
         float m = s < 0. ? 0.95 : 1.;
         col = vec3(1, 0.5, 0.25) * m;
+        col = mix(col, vec3(0.25, 0.25, 1), led * mask);
         col = mix(col, vec3(1, 0.75, 0.5) * m, bStencil);
 
         gl_FragColor = vec4(col, 1.0);
@@ -278,7 +349,7 @@ window.addEventListener('resize', onWindowResize, false);
 
 var clock = new THREE.Clock();
 
-renderer.setAnimationLoop(() => {
+function AnimationLoop() {
 
     let t = clock.getElapsedTime() * 0.75;
 
@@ -290,6 +361,10 @@ renderer.setAnimationLoop(() => {
     uniforms.time.value = t;
     backUniforms.time.value = t;
 
+    analyser.getFrequencyData();
+
+    backUniforms.soundData.value.needsUpdate = true;
+
     controls.update();
 
     renderer.clear();
@@ -297,7 +372,7 @@ renderer.setAnimationLoop(() => {
     renderer.clearDepth();
     renderer.render(sceneFront, cameraFront)
 
-});
+};
 
 function onWindowResize() {
 
