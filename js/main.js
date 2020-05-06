@@ -130,18 +130,18 @@ var backPlaneMat = new THREE.ShaderMaterial({
         // sound spectrum https://www.shadertoy.com/view/Mlj3WV
                         
             vec2 sUv = uv - 0.5;
-            sUv *= vec2(2., 3.5);
+            sUv *= vec2(4., 3);
             sUv = abs(sUv);
 
             // quantize coordinates
-            const float bands = 128.0;
+            const float bands = 64.0;
             const float segs = 45.0;
             vec2 p = vec2(0);
             p.x = floor(sUv.x*bands)/bands;
             p.y = floor(sUv.y*segs)/segs;
 
             // read frequency data from first row of texture
-            float fft  = texture2D( soundData, vec2(p.x,0.0) ).x;
+            float fft  = texture2D( soundData, vec2(0.1 + p.x * 0.5,0.0) ).x;
 
             float mask = (p.y < fft) ? 1.0 : 0.025;
             
@@ -158,8 +158,11 @@ var backPlaneMat = new THREE.ShaderMaterial({
         
         float m = s < 0. ? 0.95 : 1.;
         col = vec3(1, 0.5, 0.25) * m;
-        col = mix(col, vec3(0.375, 0.375, 1.), led * mask);
+        
+        if (s < 0.) col = mix(col, vec3(0.375, 0.375, 1.), led * mask);
         col = mix(col, vec3(1, 0.75, 0.5) * m, bStencil);
+        if (s >= 0.) col = mix(col, vec3(0.45, 0.45, 1.), led * mask);
+        
 
         gl_FragColor = vec4(col, 1.0);
     }
@@ -198,7 +201,7 @@ var angleStep = Math.PI / spheresAmount;
 var spheres = [];
 var corpuscules = [];
 
-var sphereColor = 0xff6633; //0x884444;
+var sphereColor = 0xff5527; //0x884444;
 var sGeom = new THREE.SphereBufferGeometry(0.075, 16, 16);
 var sMat = new THREE.MeshLambertMaterial({
     color: sphereColor,

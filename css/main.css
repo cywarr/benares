@@ -31,3 +31,14 @@ body {
 	border: 0px;
 	cursor: pointer;
 }
+
+#info {
+  position: absolute;
+  bottom: 0px;
+  margin: 5px;
+  font-family: monospace;
+}
+
+a {
+  color: #ffddbb;
+}
