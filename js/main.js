@@ -133,6 +133,8 @@ var backPlaneMat = new THREE.ShaderMaterial({
             sUv *= vec2(4., 3);
             sUv = abs(sUv);
 
+            sUv.x *= ratio;
+
             // quantize coordinates
             const float bands = 64.0;
             const float segs = 45.0;
